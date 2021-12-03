@@ -14,31 +14,4 @@
 	<natures>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
-	<linkedResources>
-		<link>
-			<name>src/projet_reseau/Client.java</name>
-			<type>1</type>
-			<locationURI>PROJECT_LOC/bin/Client.java</locationURI>
-		</link>
-		<link>
-			<name>src/projet_reseau/Server.java</name>
-			<type>1</type>
-			<locationURI>PROJECT_LOC/bin/Server.java</locationURI>
-		</link>
-		<link>
-			<name>src/projet_reseau/Tools.java</name>
-			<type>1</type>
-			<locationURI>PROJECT_LOC/bin/Tools.java</locationURI>
-		</link>
-		<link>
-			<name>src/projet_reseau/UdpClient.java</name>
-			<type>1</type>
-			<locationURI>PROJECT_LOC/bin/UdpClient.java</locationURI>
-		</link>
-		<link>
-			<name>src/projet_reseau/UdpServer.java</name>
-			<type>1</type>
-			<locationURI>PROJECT_LOC/bin/UdpServer.java</locationURI>
-		</link>
-	</linkedResources>
 </projectDescription>
