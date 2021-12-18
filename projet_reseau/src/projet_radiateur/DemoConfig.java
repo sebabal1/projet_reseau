@@ -12,12 +12,12 @@ public class DemoConfig{
         System.out.println("Usage: java DemoConfig CONFIG_PATH");
     }
     public static void main(String[] args){
-        /*if(args.length != 1){
+        if(args.length != 1){
             printUsage();
             System.exit(1);
-        }*/
+        }
         try{
-            Config config = new Config("scenario1.config");
+            Config config = new Config(args[0]);
 
             System.out.println("Nodes:");
             for(Config.Node node : config.getNodes()){
