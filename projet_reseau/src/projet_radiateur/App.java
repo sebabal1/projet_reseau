@@ -2,12 +2,18 @@ package projet_radiateur;
 
 
 import java.net.*;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-
+import java.util.ArrayList;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+
+import projet_radiateur.Config.FileFormatException;
+import projet_radiateur.Config.Link;
+import projet_radiateur.Config.Node;
+import projet_reseau.Tools;
 
 /**
  * Classe représentant une application numéro *ID* qui envoie périodiquement un message à
@@ -26,6 +32,8 @@ public class App{
     static int BASE_PORT = 4444;
     // Interval d'envoi de message pour chaque noeud
     int BCAST_INTERVAL = 2000;
+    //Chemin vers le fichier scenario.config
+    
 
     /*
      * Variables d'instance
@@ -39,15 +47,22 @@ public class App{
 
     // Objet utiliser pour le log d'événements dans un certain format
     private Logger log;
+    
+    private final ArrayList<Link> links;
+    private final ArrayList<Node> nodes;
+    
+    private Config config;
 
     /**
      * Constructeur de l'application
      * @param id entier représentant l'identifiant (unique) de l'application
      */
-    public App(int id) throws UnknownHostException{
+    public App(int id, int portSource, ArrayList<Link> linkConfig, ArrayList<Node> nodeConfig) throws UnknownHostException{
         this.appId = id;
         // On détermine le port d'écoute sur base de l'ID
-        this.port = BASE_PORT+id;
+        this.port = portSource;
+        this.links = linkConfig;
+        this.nodes = nodeConfig;
         initLogger();
         log.info("start");
     }
@@ -56,8 +71,10 @@ public class App{
      * Méthode principale qui contient la boucle d'événéments se chargeant 
      * d'envoyer périodiquement un message et de vérifier si un message a
      * été reçu.
+     * @throws FileFormatException 
+     * @throws IOException 
      */
-    public void run() {
+    public void run(){
         try (DatagramSocket socket = new DatagramSocket(port)){
             /* On configure le socket de telle sorte à ce qu'un appel bloquant
             le soit pendant 100ms, délai après lequel l'appel générera une 
@@ -74,16 +91,28 @@ public class App{
                     /* On sélectionne la prochaine application sur base de l'ID.
                     l'opération '%NUM_CLIENTS' de revenir à l'ID 0 lorsqu'on
                     séléctionne la destination pour la dernière application. */
+                	int portDestination = nodes.get(appId).port;
+                	int portSource = links.get(appId).sourceId;
+                	
+                	
+                	
                     int destinationId = (appId+1)%NUM_CLIENTS;
-                    int destinationPort = BASE_PORT+destinationId;
-                    String msg = String.format("Hello App#%d from App#%d", destinationId, appId);
+                    //int destinationPort = BASE_PORT+destinationId;
+                    String msg = String.format("Hello App#%d from App#%d", portDestination, portSource);
 
                     log.info(String.format("Sending message '%s' ",msg));
-
+                    byte [] portS = (byte []) Tools.intToBytes(portSource);
+                    byte [] portD = (byte []) Tools.intToBytes(portDestination);
+                    
                     // On prépare le datagramme à envoyer.
                     byte [] sbuf = msg.getBytes();
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    out.write(portS);
+                    out.write(portD);
+                    out.write(sbuf);
+                    byte [] buffer = out.toByteArray();
                     InetAddress addr = InetAddress.getByName("localhost");
-                    DatagramPacket rpacket = new DatagramPacket(sbuf, sbuf.length, addr, destinationPort);
+                    DatagramPacket rpacket = new DatagramPacket(buffer, buffer.length, addr, portDestination);
                     socket.send(rpacket);
                     // On met à jour le temps de dernier envoi de paquet.
                     time = System.currentTimeMillis();
