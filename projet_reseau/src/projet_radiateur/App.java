@@ -2,9 +2,13 @@ package projet_radiateur;
 
 
 import java.net.*;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
@@ -50,6 +54,7 @@ public class App{
     
     private final ArrayList<Link> links;
     private final ArrayList<Node> nodes;
+    private final Map<Integer, Integer> map = new HashMap<Integer, Integer>();
     
     private Config config;
 
@@ -75,6 +80,7 @@ public class App{
      * @throws IOException 
      */
     public void run(){
+    	ArrayList<Link> le = links;
         try (DatagramSocket socket = new DatagramSocket(port)){
             /* On configure le socket de telle sorte à ce qu'un appel bloquant
             le soit pendant 100ms, délai après lequel l'appel générera une 
@@ -84,6 +90,7 @@ public class App{
             // Temps écoulé (en millisecondes) depuis le démarrage de la machine
             long time = System.currentTimeMillis();
             // Boucle d'événements répétée indéfiniment
+   
             while (true) {
                 /* S'il s'est écoulé plus de 'BCAST_INTERVAL' millisecondes
                 depuis le dernier envoi. */
@@ -91,24 +98,28 @@ public class App{
                     /* On sélectionne la prochaine application sur base de l'ID.
                     l'opération '%NUM_CLIENTS' de revenir à l'ID 0 lorsqu'on
                     séléctionne la destination pour la dernière application. */
-                	int portDestination = nodes.get(appId).port;
-                	int portSource = links.get(appId).sourceId;
+                	//int destinationId = (appId+1)%NUM_CLIENTS;
+                	int test = this.appId;
                 	
-                	
-                	
-                    int destinationId = (appId+1)%NUM_CLIENTS;
+                	int portDestination = nodes.get(this.appId-1).port;
+                	int idSource = links.get(this.appId-1).sourceId;
+                	int idDestination = links.get(this.appId-1).destinationId;
+         
+                    //int destinationId = (appId+1)%NUM_CLIENTS;
                     //int destinationPort = BASE_PORT+destinationId;
-                    String msg = String.format("Hello App#%d from App#%d", portDestination, portSource);
+                    String msg = String.format("Hello App#%d from App#%d", portDestination, this.port);
 
-                    log.info(String.format("Sending message '%s' ",msg));
-                    byte [] portS = (byte []) Tools.intToBytes(portSource);
-                    byte [] portD = (byte []) Tools.intToBytes(portDestination);
+                    log.info(String.format("Sending message '%s' ",msg));                 
+                     byte [] idS = (byte []) Tools.intToBytes(idSource);               
+                     byte [] portD = (byte []) Tools.intToBytes(portDestination);
+                     byte [] destId = (byte []) Tools.intToBytes(idDestination);
                     
                     // On prépare le datagramme à envoyer.
                     byte [] sbuf = msg.getBytes();
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    out.write(portS);
+                    out.write(idS);
                     out.write(portD);
+                    out.write(destId);
                     out.write(sbuf);
                     byte [] buffer = out.toByteArray();
                     InetAddress addr = InetAddress.getByName("localhost");
@@ -123,7 +134,13 @@ public class App{
                     durant 100ms, au maximum. Si un datagramme arrive avant 
                     ce délai, il sera traité. Sinon, une exception sera
                     générée. */
+                    
                     socket.receive(packet);
+                    ByteArrayInputStream in = new ByteArrayInputStream(packet.getData());
+                    int soId = readResultat(in);
+                    int pDestination = readResultat(in);
+                    int idDes = readResultat(in);
+                   
                     log.info(String.format("Received packet: %s", new String(packet.getData())));
                 } catch (SocketTimeoutException e) {
                     // Aucun datagramme n'est arrivé durant les 100ms
@@ -136,6 +153,12 @@ public class App{
             System.out.println(e);
             throw new RuntimeException("Client closed due to exception", e);
         }
+    }
+    
+    public int readResultat(ByteArrayInputStream in) throws IOException{
+    	byte [] buffer = new byte[4];
+    	in.read(buffer);
+    	return Tools.bytesToInt(buffer);
     }
 
     /**

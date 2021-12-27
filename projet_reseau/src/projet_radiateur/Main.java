@@ -19,9 +19,6 @@ public class Main {
 						for(int i=0;i< taille; i++){
 							ArrayList<Config.Node> node = config.getNodes();
 							ArrayList<Config.Link> link = config.getLinks();
-							
-							
-							
 							int appId = i;
 							// On crée un fil d'exécution qui va gérer la vie d'une application
 							Thread thread = new Thread(){
