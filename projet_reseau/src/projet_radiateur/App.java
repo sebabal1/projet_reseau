@@ -2,10 +2,10 @@ package projet_radiateur;
 
 
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +17,7 @@ import java.util.logging.SimpleFormatter;
 import projet_radiateur.Config.FileFormatException;
 import projet_radiateur.Config.Link;
 import projet_radiateur.Config.Node;
-import projet_reseau.Tools;
+
 
 /**
  * Classe représentant une application numéro *ID* qui envoie périodiquement un message à
@@ -54,6 +54,7 @@ public class App{
     
     private final ArrayList<Link> links;
     private final ArrayList<Node> nodes;
+    private ArrayList<Integer> voisins;
     private final Map<Integer, Integer> map = new HashMap<Integer, Integer>();
     
     private Config config;
@@ -80,7 +81,6 @@ public class App{
      * @throws IOException 
      */
     public void run(){
-    	ArrayList<Link> le = links;
         try (DatagramSocket socket = new DatagramSocket(port)){
             /* On configure le socket de telle sorte à ce qu'un appel bloquant
             le soit pendant 100ms, délai après lequel l'appel générera une 
@@ -90,6 +90,7 @@ public class App{
             // Temps écoulé (en millisecondes) depuis le démarrage de la machine
             long time = System.currentTimeMillis();
             // Boucle d'événements répétée indéfiniment
+            voisins = getVoisins(this.appId);
    
             while (true) {
                 /* S'il s'est écoulé plus de 'BCAST_INTERVAL' millisecondes
@@ -99,31 +100,24 @@ public class App{
                     l'opération '%NUM_CLIENTS' de revenir à l'ID 0 lorsqu'on
                     séléctionne la destination pour la dernière application. */
                 	//int destinationId = (appId+1)%NUM_CLIENTS;
-                	int test = this.appId;
-                	
-                	int portDestination = nodes.get(this.appId-1).port;
-                	int idSource = links.get(this.appId-1).sourceId;
-                	int idDestination = links.get(this.appId-1).destinationId;
+                
+                	int portSource = nodes.get(this.appId-1).port;
+                	int portDestination = nodes.get(this.appId).port;
+                	int idDestination = links.get(this.appId-1).sourceId;
+                	int idSource = links.get(this.appId-1).destinationId;
+                	int ttl = 114789;
          
                     //int destinationId = (appId+1)%NUM_CLIENTS;
                     //int destinationPort = BASE_PORT+destinationId;
                     String msg = String.format("Hello App#%d from App#%d", portDestination, this.port);
 
                     log.info(String.format("Sending message '%s' ",msg));                 
-                     byte [] idS = (byte []) Tools.intToBytes(idSource);               
-                     byte [] portD = (byte []) Tools.intToBytes(portDestination);
-                     byte [] destId = (byte []) Tools.intToBytes(idDestination);
-                    
-                    // On prépare le datagramme à envoyer.
-                    byte [] sbuf = msg.getBytes();
-                    ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    out.write(idS);
-                    out.write(portD);
-                    out.write(destId);
-                    out.write(sbuf);
+                    // Construction du buffer
+                    ByteArrayOutputStream out = createBuffer(portSource,portDestination,idDestination,idSource,ttl,msg);
                     byte [] buffer = out.toByteArray();
                     InetAddress addr = InetAddress.getByName("localhost");
-                    DatagramPacket rpacket = new DatagramPacket(buffer, buffer.length, addr, portDestination);
+                    //Construction du Datagram
+                    DatagramPacket rpacket = new DatagramPacket(buffer, buffer.length, addr, portSource);
                     socket.send(rpacket);
                     // On met à jour le temps de dernier envoi de paquet.
                     time = System.currentTimeMillis();
@@ -137,9 +131,29 @@ public class App{
                     
                     socket.receive(packet);
                     ByteArrayInputStream in = new ByteArrayInputStream(packet.getData());
-                    int soId = readResultat(in);
-                    int pDestination = readResultat(in);
+                    int pS = readResultat(in);
                     int idDes = readResultat(in);
+                    int idSo = readResultat(in);
+                    int ttl = readResultat(in);
+                    String msg = readMessage(in);
+                    if(idDes != idSo) {
+                    	for(int j=0; j < voisins.size(); j++) {
+                        	int newIdDest = voisins.get(j);
+                        	ttl = ttl-1;
+                        	int newPortDest = nodes.get(newIdDest-1).port;
+                        	ByteArrayOutputStream out = createBuffer(pS, newPortDest, newIdDest, idSo, ttl, msg);
+                        	byte [] buffer = out.toByteArray();
+                        	InetAddress addr = InetAddress.getByName("localhost");
+                            //Construction du Datagram
+                            DatagramPacket rpacket = new DatagramPacket(buffer, buffer.length, addr, newPortDest);
+                            socket.send(rpacket);
+                        }
+                    }
+                    
+                    
+                    
+                    
+                    // Faire une boucle pour envoyer aux voisins
                    
                     log.info(String.format("Received packet: %s", new String(packet.getData())));
                 } catch (SocketTimeoutException e) {
@@ -160,7 +174,57 @@ public class App{
     	in.read(buffer);
     	return Tools.bytesToInt(buffer);
     }
-
+    
+    public String readMessage(ByteArrayInputStream in) throws IOException{	
+    	int n = in.available();
+    	byte [] message = new byte[n];
+    	in.read(message, 0, n);
+		return new String(message, StandardCharsets.UTF_8);
+	}
+    
+    public ArrayList<Integer> getVoisins(int id){
+    	int sId, dId;
+    	ArrayList<Integer> voisin = new ArrayList<Integer>();
+    	for(Link lien : links) {
+    		sId = lien.sourceId;
+    		dId = lien.destinationId;
+    		if(sId == id) {
+    			voisin.add(dId);
+    		}
+    	}
+    	
+    	return voisin;
+    }
+    
+    /**
+     * 
+     * On passe en paramètres un id Source, le Port de Destination, l'id de Destination, le TTL et le message a affiché
+     * Cette fonction permet de construire le buffer qui sera envoyé
+     * 
+     */
+    public ByteArrayOutputStream createBuffer(int portSource,int portDestination,int idDestination, int idSource, int ttl, String msg) throws IOException {
+    	byte [] portS = (byte []) Tools.intToBytes(portSource);
+    	byte [] portD = (byte []) Tools.intToBytes(portDestination);
+        byte [] idDest = (byte []) Tools.intToBytes(idDestination);
+        byte [] idSour = (byte []) Tools.intToBytes(idSource);
+        byte [] ttlData = (byte []) Tools.intToBytes(ttl);
+        //ajout d'un numero de sequence
+       
+       // On prépare le datagramme à envoyer.
+       byte [] sbuf = msg.getBytes();
+       ByteArrayOutputStream out = new ByteArrayOutputStream();
+       out.write(portS);
+       out.write(portD);
+       out.write(idSour);
+       out.write(idDest);
+       out.write(ttlData);
+       out.write(sbuf);
+       return out;
+    	
+    }
+    
+    
+    
     /**
      * Initialise l'objet qui sera utilisé pour afficher les événements liés à
      * cette application en particulier, en utilisant le format spécifié dans
