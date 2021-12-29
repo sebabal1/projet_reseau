@@ -118,14 +118,7 @@ public class Config{
             this.sourceId = sourceId;
             this.destinationId = destinationId;
         }
-        /*public int sourceId(){
-        	return this.sourceId;
-        }
-        public int destinationId() {
-        	return this.destinationId;
-        }*/
-        
-        
+  
         public String toString(){
             return String.format("[Node#%d is connected to Node#%d]",sourceId, destinationId);
         }

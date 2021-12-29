@@ -1,6 +1,9 @@
 package projet_radiateur;
 
 import java.util.ArrayList;
+
+import projet_radiateur.Config.Event;
+
 import java.io.IOException;
 import java.net.UnknownHostException;
 
@@ -10,7 +13,7 @@ public class Main {
 		System.out.println("Usage: java DemoConfig CONFIG_PATH");
 	}
 	public static void main(String[] args){
-		String PATH_FILE = "/home/sba/Documents/Java_Perso/projet/projet_reseau/src/projet_radiateur/scenario1.config";
+		String PATH_FILE = "/home/sba/Documents/Java_Perso/projet/projet_reseau/src/projet_radiateur/scenario3.config";
 		Config config;
 		try{
 			config = new Config(PATH_FILE);
@@ -19,12 +22,13 @@ public class Main {
 						for(int i=0;i< taille; i++){
 							ArrayList<Config.Node> node = config.getNodes();
 							ArrayList<Config.Link> link = config.getLinks();
+							ArrayList<Config.Event> event = config.getEvents(); 
 							int appId = i;
 							// On crée un fil d'exécution qui va gérer la vie d'une application
 							Thread thread = new Thread(){
 								public void run(){
 									try{
-										App app = new App(node.get(appId).id,node.get(appId).port,link,node);
+										App app = new App(node.get(appId).id,node.get(appId).port,link,node,event);
 										app.run();
 										System.out.println("Thread Running");
 									}
