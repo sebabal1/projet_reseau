@@ -58,7 +58,7 @@ public class App{
 	private final ArrayList<Node> nodes;
 	private final ArrayList<Event> events;
 	private ArrayList<Link> linksNode = new ArrayList<Link>();
-	
+
 	private ArrayList<Integer> voisins;
 	private final Map<Integer, Integer> map = new HashMap<Integer, Integer>();
 	private int ttl = 114789;
@@ -98,11 +98,17 @@ public class App{
 			long time = System.currentTimeMillis();
 			// Boucle d'événements répétée indéfiniment
 
+			/**
+			 * TODO Prevoir le fonctionnement avec les évènements
+			 * 		Choix du meilleur chemin
+			 * 		Ajout ID pour saut de noeud
+			 */
+
 			this.voisins = getVoisins(this.appId);
 			String msgVoisins =String.format("Le(s) voisin(s) de %d est(sont) :"+ this.voisins, this.appId);
 			System.out.println(msgVoisins);
 			while (true) {
-				while(!this.voisins.isEmpty()) {
+				while(map.size() < voisins.size()) {
 					/* S'il s'est écoulé plus de 'BCAST_INTERVAL' millisecondes
                 depuis le dernier envoi. */
 					if (System.currentTimeMillis() > time + BCAST_INTERVAL) {
@@ -110,10 +116,10 @@ public class App{
                     l'opération '%NUM_CLIENTS' de revenir à l'ID 0 lorsqu'on
                     séléctionne la destination pour la dernière application. */
 						//int destinationId = (appId+1)%NUM_CLIENTS;
-						
-						
+
+
 						int portSource, portDestination, idDestination, idSource;
-						
+
 						/**
 						 * Ce système permet de récupérer le premier lien en fonction de l'appID
 						 * TODO faire une fonction
@@ -125,7 +131,7 @@ public class App{
 								flag = true;
 							}
 						}
-					
+
 						portSource = nodes.get(this.appId-1).port;
 						portDestination = nodes.get(voisins.get(0)-1).port;
 						idSource = linksNode.get(0).sourceId;
@@ -167,24 +173,27 @@ public class App{
 						map.put(pDes, ttl);
 						int tes = map.get(pDes);
 						//Si premier dans la liste des voisins 
-						if(this.voisins.get(0) == idDes) {
+						/*if(this.voisins.get(0) == idDes) {
 							log.info(String.format("App: %d Received packet: %s from App : %d",idDes, msg,idSo));
-							//this.voisins.remove(0);
-						}
+							this.voisins.remove(0);
+						}*/
+						/**
+						 * TODO La partie envoie vers les voisins ne se fait pas correctement
+						 */
 						// Parcourt le reste des voisins
-						for(int j=1; j < this.voisins.size(); j++) {
+						for(int j=0; j < this.voisins.size(); j++) {
 							if(this.voisins.get(j) == idDes) {
 								log.info(String.format("App: %d Received packet: %s from App : %d",idDes, msg,idSo));
 							}else {
-								int newIdDest = this.voisins.get(j);
-								this.ttl = ttlBuff-1;
-								int newPortDest = nodes.get(newIdDest-1).port;
-								ByteArrayOutputStream out = createBuffer(pS, newPortDest,idSo ,newIdDest , ttl, msg);
-								byte [] buffer = out.toByteArray();
-								InetAddress addr = InetAddress.getByName("localhost");
-								//Construction du Datagram
-								DatagramPacket rpacket = new DatagramPacket(buffer, buffer.length, addr, newPortDest);
-								socket.send(rpacket);
+							int newIdDest = this.voisins.get(j);
+							this.ttl = ttlBuff-1;
+							int newPortDest = nodes.get(newIdDest-1).port;
+							ByteArrayOutputStream out = createBuffer(pS, newPortDest,idSo ,newIdDest , ttl, msg);
+							byte [] buffer = out.toByteArray();
+							InetAddress addr = InetAddress.getByName("localhost");
+							//Construction du Datagram
+							DatagramPacket rpacket = new DatagramPacket(buffer, buffer.length, addr, newPortDest);
+							socket.send(rpacket);
 							}
 						}
 						// Faire une boucle pour envoyer aux voisins

@@ -13,7 +13,7 @@ public class Main {
 		System.out.println("Usage: java DemoConfig CONFIG_PATH");
 	}
 	public static void main(String[] args){
-		String PATH_FILE = "/home/sba/Documents/Java_Perso/projet/projet_reseau/src/projet_radiateur/scenario3.config";
+		String PATH_FILE = "/home/sba/Documents/Java_Perso/projet/projet_reseau/src/projet_radiateur/scenario1.config";
 		Config config;
 		try{
 			config = new Config(PATH_FILE);
